@@ -82,9 +82,8 @@
     .dia li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255, 255, 255, .1); }
     .dia li:last-child { border-bottom: none; }
     .status { text-align: center; padding: 5px; font-size: 1.0rem; }
-    .status.flutuante { position: absolute; top: 8px; right: 12px; text-align: right;  font-style: italic; }
     .erro { color: #ffd2d2; }
-    footer { text-align: center; font-size: .8rem; opacity: .7; }
+    footer { text-align: center; font-size: 1.0rem; font-style: italic; opacity: .9; }
     footer a { color: #fff; }
   </style>
 </head>
@@ -103,7 +102,6 @@
     <main id="conteudo" hidden>
       <section class="card">
         <h2><span id="nomeCidade"></span></h2>
-        <div class="status flutuante"><p id="atualizado"></p></div>
         <h4>Neste momento</h4>
         <div class="atual">
           <span class="icone" id="iconeAtual" role="img"></span>
@@ -121,6 +119,10 @@
         <h2>Previsão para os Próximos Dias</h2>
         <div class="dias" id="dias"></div>
       </section>
+
+      <footer>
+        <p id="mensagemHoraBusca"></p>
+      </footer>
     </main>
   </div>
 
@@ -284,7 +286,7 @@
       const status = document.getElementById("status");
       const conteudo = document.getElementById("conteudo");
 
-      document.getElementById("atualizado").textContent = "";
+      document.getElementById("mensagemHoraBusca").textContent = "";
       document.title = `Previsão do Tempo Jaime - ${cidade.nome}`;
       document.getElementById("nomeCidade").textContent = cidade.nome;
       document.querySelectorAll("#cidades button").forEach(b => {
@@ -311,7 +313,7 @@
 
         const [dataAtual, horaAtual] = dados.current.time.split("T");
         const dataFormatada = new Date(`${dataAtual}T12:00:00`).toLocaleDateString("pt-BR");
-        document.getElementById("atualizado").textContent = `Dados de ${horaAtual} da API Open-Meteo`;
+        document.getElementById("mensagemHoraBusca").textContent = `Dados da API Open-Meteo às ${horaAtual}`;
 
         status.hidden = true;
         conteudo.hidden = false;
