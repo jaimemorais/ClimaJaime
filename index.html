@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jaime Clima</title>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(160deg, #1e3c72, #2a5298 60%, #6dd5ed);
+      color: #fff;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 { font-size: 2rem; font-weight: 600; }
+    header p { opacity: .8; margin-top: 4px; }
+    .cidades { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 20px; }
+    .cidades button {
+      font: inherit;
+      color: #fff;
+      background: rgba(255, 255, 255, .12);
+      border: 1px solid rgba(255, 255, 255, .3);
+      border-radius: 999px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .cidades button:hover { background: rgba(255, 255, 255, .25); }
+    .cidades button.ativo { background: #fff; color: #1e3c72; font-weight: 600; }
+    .card {
+      position: relative;
+      background: rgba(255, 255, 255, .12);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, .2);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .card h2 { font-size: 1.2rem; margin-bottom: 16px; font-weight: 600; }
+    .atual { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
+    .atual .temp { font-size: 3rem; font-weight: 300; line-height: 1; }
+    .atual .detalhes {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      flex: 1;
+    }
+    .info { background: rgba(255, 255, 255, .1); border-radius: 10px; padding: 10px 12px; }
+    .info span { display: block; font-size: .8rem; opacity: .8; }
+    .info strong { font-size: 1.1rem; }
+    .horas { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+    .hora {
+      flex: 0 0 auto;
+      min-width: 110px;
+      text-align: center;
+      background: rgba(255, 255, 255, .1);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: .85rem;
+    }
+    .hora .h { font-weight: 600; margin-bottom: 6px; }
+    .hora .t { font-size: 1.4rem; margin-bottom: 6px; }
+    .hora div { margin: 2px 0; }
+    .dias {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .dia { background: rgba(255, 255, 255, .1); border-radius: 10px; padding: 14px; }
+    .dia h3 { font-size: 1rem; margin-bottom: 8px; text-transform: capitalize; }
+    .dia .minmax { font-size: 1.5rem; margin-bottom: 8px; }
+    .dia .minmax .min { opacity: .7; font-size: 1.1rem; }
+    .dia ul { list-style: none; font-size: .85rem; }
+    .dia li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+    .dia li:last-child { border-bottom: none; }
+    .status { text-align: center; padding: 5px; font-size: 1.0rem; }
+    .status.flutuante { position: absolute; top: 8px; right: 12px; text-align: right;  font-style: italic; }
+    .erro { color: #ffd2d2; }
+    footer { text-align: center; font-size: .8rem; opacity: .7; }
+    footer a { color: #fff; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+
+    <header>
+      <h1>Jaime Clima</h1>
+    </header>
+
+    <nav class="cidades" id="cidades" aria-label="Selecionar cidade"></nav>
+
+    <div id="status" class="status">Carregando dados...</div>
+
+    <main id="conteudo" hidden>
+      <section class="card">
+        <h2><span id="nomeCidade"></span></h2>
+        <div class="status flutuante"><p id="atualizado"></p></div>
+        <h4>Neste momento</h4>
+        <div class="atual">
+          <div class="temp" id="tempAtual"></div>
+          <div class="detalhes" id="detalhesAtual"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Próximas 24 Horas</h2>
+        <div class="horas" id="horas"></div>
+      </section>
+
+      <section class="card">
+        <h2>Previsão para os Próximos Dias</h2>
+        <div class="dias" id="dias"></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const CIDADES = [
+      { nome: "Belo Horizonte - MG", latitude: -19.9208, longitude: -43.9378, timezone: "America/Sao_Paulo" },
+      { nome: "Guarapari - ES", latitude: -20.6717, longitude: -40.4978, timezone: "America/Sao_Paulo" },
+      { nome: "Piumhi - MG", latitude: -20.4656, longitude: -45.9581, timezone: "America/Sao_Paulo" },
+      { nome: "Lisboa - Portugal", latitude: 38.7167, longitude: -9.1333, timezone: "Europe/Lisbon" },
+      { nome: "Porto - Portugal", latitude: 41.1496, longitude: -8.6110, timezone: "Europe/Lisbon" }
+    ];
+
+    function urlApi(cidade) {
+      const params = new URLSearchParams({
+        latitude: cidade.latitude,
+        longitude: cidade.longitude,
+        daily: "temperature_2m_max,temperature_2m_min,uv_index_max,showers_sum,rain_sum,precipitation_sum,precipitation_hours,precipitation_probability_max",
+        hourly: "temperature_2m,rain,precipitation_probability,relative_humidity_2m,showers,cloud_cover",
+        current: "temperature_2m,relative_humidity_2m,precipitation,rain,showers,wind_speed_10m,wind_direction_10m",
+        timezone: cidade.timezone
+      });
+      return `https://api.open-meteo.com/v1/forecast?${params}`;
+    }
+
+    let requisicaoAtual = 0;
+
+    const DIRECOES = ["Norte", "Nordeste", "Leste", "Sudeste", "Sul", "Sudoeste", "Oeste", "Noroeste"];
+
+    function direcaoVento(graus) {
+      return DIRECOES[Math.round(graus / 45) % 8];
+    }
+
+    function nivelUV(uv) {
+      if (uv < 3) return "Baixo";
+      if (uv < 6) return "Moderado";
+      if (uv < 8) return "Alto";
+      if (uv < 11) return "Muito alto";
+      return "Extremo";
+    }
+
+    function fmt(valor, unidade) {
+      if (valor === null || valor === undefined) return "-";
+      return `${Number(valor).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}${unidade}`;
+    }
+
+    function criar(tag, classe, texto) {
+      const el = document.createElement(tag);
+      if (classe) el.className = classe;
+      if (texto !== undefined) el.textContent = texto;
+      return el;
+    }
+
+    function info(rotulo, valor) {
+      const div = criar("div", "info");
+      div.append(criar("span", null, rotulo), criar("strong", null, valor));
+      return div;
+    }
+
+    function renderAtual(atual, u) {
+      document.getElementById("tempAtual").textContent = fmt(atual.temperature_2m, u.temperature_2m);
+      document.getElementById("detalhesAtual").replaceChildren(
+        info("Umidade relativa", fmt(atual.relative_humidity_2m, u.relative_humidity_2m)),
+        info("Precipitação", fmt(atual.precipitation, " " + u.precipitation)),
+        info("Chuva", fmt(atual.rain, " " + u.rain)),
+        info("Pancadas de chuva", fmt(atual.showers, " " + u.showers)),
+        info("Vento", fmt(atual.wind_speed_10m, " " + u.wind_speed_10m)),
+        info("Direção do vento", `${direcaoVento(atual.wind_direction_10m)} (${fmt(atual.wind_direction_10m, "°")})`)
+      );
+    }
+
+    function renderHoras(horario, u, horaAtual) {
+      const inicioHora = horaAtual.slice(0, 13);
+      let inicio = horario.time.findIndex(t => t.slice(0, 13) === inicioHora);
+      if (inicio < 0) inicio = 0;
+
+      const container = document.getElementById("horas");
+      container.replaceChildren();
+      for (let i = inicio; i < Math.min(inicio + 24, horario.time.length); i++) {
+        const card = criar("div", "hora");
+        card.append(
+          criar("div", "h", i === inicio ? "Agora" : horario.time[i].slice(11, 16)),
+          criar("div", "t", fmt(horario.temperature_2m[i], u.temperature_2m)),
+          criar("div", null, `Chance de chuva: ${fmt(horario.precipitation_probability[i], "%")}`),
+          criar("div", null, `Chuva: ${fmt(horario.rain[i], " " + u.rain)}`),
+          criar("div", null, `Pancadas: ${fmt(horario.showers[i], " " + u.showers)}`),
+          criar("div", null, `Umidade: ${fmt(horario.relative_humidity_2m[i], "%")}`),
+          criar("div", null, `Nuvens: ${fmt(horario.cloud_cover[i], "%")}`)
+        );
+        container.append(card);
+      }
+    }
+
+    function renderDias(diario, u) {
+      const container = document.getElementById("dias");
+      container.replaceChildren();
+      diario.time.forEach((data, i) => {
+        const dataObj = new Date(`${data}T12:00:00`);
+        const titulo = i === 0
+          ? "Hoje"
+          : dataObj.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" });
+
+        const card = criar("div", "dia");
+        const minmax = criar("div", "minmax", fmt(diario.temperature_2m_max[i], u.temperature_2m_max) + " ");
+        minmax.append(criar("span", "min", fmt(diario.temperature_2m_min[i], u.temperature_2m_min)));
+
+        const lista = criar("ul");
+        const linhas = [
+          ["Chance de chuva", fmt(diario.precipitation_probability_max[i], "%")],
+          ["Precipitação total", fmt(diario.precipitation_sum[i], " " + u.precipitation_sum)],
+          ["Chuva", fmt(diario.rain_sum[i], " " + u.rain_sum)],
+          ["Pancadas de chuva", fmt(diario.showers_sum[i], " " + u.showers_sum)],
+          ["Horas de precipitação", fmt(diario.precipitation_hours[i], " h")],
+          ["Índice UV máximo", `${fmt(diario.uv_index_max[i], "")} (${nivelUV(diario.uv_index_max[i])})`]
+        ];
+        linhas.forEach(([rotulo, valor]) => {
+          const li = criar("li");
+          li.append(criar("span", null, rotulo), criar("strong", null, valor));
+          lista.append(li);
+        });
+
+        card.append(criar("h3", null, titulo), minmax, lista);
+        container.append(card);
+      });
+    }
+
+    async function carregar(cidade) {
+      const id = ++requisicaoAtual;
+      const status = document.getElementById("status");
+      const conteudo = document.getElementById("conteudo");
+
+      document.getElementById("atualizado").textContent = "";
+      document.title = `Previsão do Tempo Jaime - ${cidade.nome}`;
+      document.getElementById("nomeCidade").textContent = cidade.nome;
+      document.querySelectorAll("#cidades button").forEach(b => {
+        const ativo = b.textContent === cidade.nome;
+        b.classList.toggle("ativo", ativo);
+        b.setAttribute("aria-pressed", ativo);
+      });
+
+      status.classList.remove("erro");
+      status.textContent = "Carregando dados...";
+      status.hidden = false;
+      conteudo.hidden = true;
+
+      try {
+        const resposta = await fetch(urlApi(cidade));
+        if (!resposta.ok) throw new Error(`Erro HTTP ${resposta.status}`);
+        const dados = await resposta.json();
+        // Ignora respostas de cidades que já não estão selecionadas
+        if (id !== requisicaoAtual) return;
+
+        renderAtual(dados.current, dados.current_units);
+        renderHoras(dados.hourly, dados.hourly_units, dados.current.time);
+        renderDias(dados.daily, dados.daily_units);
+
+        const [dataAtual, horaAtual] = dados.current.time.split("T");
+        const dataFormatada = new Date(`${dataAtual}T12:00:00`).toLocaleDateString("pt-BR");
+        document.getElementById("atualizado").textContent = `Dados de ${horaAtual} da API Open-Meteo`;
+
+        status.hidden = true;
+        conteudo.hidden = false;
+      } catch (erro) {
+        if (id !== requisicaoAtual) return;
+        status.classList.add("erro");
+        status.textContent = `Não foi possível carregar a previsão do tempo. ${erro.message}`;
+      }
+    }
+
+    const nav = document.getElementById("cidades");
+    CIDADES.forEach(cidade => {
+      const botao = criar("button", null, cidade.nome);
+      botao.type = "button";
+      botao.addEventListener("click", () => carregar(cidade));
+      nav.append(botao);
+    });
+
+    carregar(CIDADES[0]);
+  </script>
+</body>
+</html>
