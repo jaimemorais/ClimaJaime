@@ -9,7 +9,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: "Segoe UI", Roboto, Arial, sans-serif;
-      background: linear-gradient(160deg, #1e3c72, #2a5298 60%, #6dd5ed);
+      background: #1e3c72;
       color: #fff;
       min-height: 100vh;
       padding: 24px 16px;
@@ -83,6 +83,8 @@
     .dia li:last-child { border-bottom: none; }
     .status { text-align: center; padding: 5px; font-size: 1.0rem; }
     .erro { color: #ffd2d2; }
+    .uv-alto { color: #ffb74d; font-weight: 600; }
+    .uv-muito-alto { color: #ffb74d; font-weight: 700; }
     footer { text-align: center; font-size: 1.0rem; font-style: italic; opacity: .9; }
     footer a { color: #fff; }
   </style>
@@ -92,7 +94,7 @@
   <div class="container">
 
     <header>
-      <h1>Jaime Clima</h1>
+      <h2>Clima Jaime | <span id="nomeCidadeSelecionada"></span></h1>
     </header>
 
     <nav class="cidades" id="cidades" aria-label="Selecionar cidade"></nav>
@@ -101,7 +103,6 @@
 
     <main id="conteudo" hidden>
       <section class="card">
-        <h2><span id="nomeCidade"></span></h2>
         <h4>Neste momento</h4>
         <div class="atual">
           <span class="icone" id="iconeAtual" role="img"></span>
@@ -116,7 +117,7 @@
       </section>
 
       <section class="card">
-        <h2>Previsão para os Próximos Dias</h2>
+        <h2>Próximos 15 Dias</h2>
         <div class="dias" id="dias"></div>
       </section>
 
@@ -140,7 +141,7 @@
         latitude: cidade.latitude,
         longitude: cidade.longitude,
         daily: "weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,showers_sum,rain_sum,precipitation_sum,precipitation_hours,precipitation_probability_max",
-        hourly: "weather_code,is_day,temperature_2m,rain,precipitation_probability,relative_humidity_2m,showers,cloud_cover",
+        hourly: "weather_code,is_day,temperature_2m,rain,precipitation_probability,relative_humidity_2m,showers,cloud_cover,uv_index",
         current: "weather_code,is_day,temperature_2m,relative_humidity_2m,precipitation,rain,showers,wind_speed_10m,wind_direction_10m",
         timezone: cidade.timezone,
         forecast_days: 15
@@ -194,6 +195,11 @@
       return "Extremo";
     }
 
+    function classeUV(uv) {
+      if (uv === null || uv === undefined || uv < 6) return null;
+      return uv < 8 ? "uv-alto" : "uv-muito-alto";
+    }
+
     function fmt(valor, unidade) {
       if (valor === null || valor === undefined) return "-";
       return `${Number(valor).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}${unidade}`;
@@ -242,7 +248,8 @@
           criar("div", null, `Chuva: ${fmt(horario.rain[i], " " + u.rain)}`),
           criar("div", null, `Pancadas: ${fmt(horario.showers[i], " " + u.showers)}`),
           criar("div", null, `Umidade: ${fmt(horario.relative_humidity_2m[i], "%")}`),
-          criar("div", null, `Nuvens: ${fmt(horario.cloud_cover[i], "%")}`)
+          criar("div", null, `Nuvens: ${fmt(horario.cloud_cover[i], "%")}`),
+          criar("div", classeUV(horario.uv_index[i]), `UV: ${fmt(horario.uv_index[i], "")} (${nivelUV(horario.uv_index[i])})`)
         );
         container.append(card);
       }
@@ -268,11 +275,11 @@
           ["Chuva", fmt(diario.rain_sum[i], " " + u.rain_sum)],
           ["Pancadas de chuva", fmt(diario.showers_sum[i], " " + u.showers_sum)],
           ["Horas de precipitação", fmt(diario.precipitation_hours[i], " h")],
-          ["Índice UV máximo", `${fmt(diario.uv_index_max[i], "")} (${nivelUV(diario.uv_index_max[i])})`]
+          ["Índice UV máximo", `${fmt(diario.uv_index_max[i], "")} (${nivelUV(diario.uv_index_max[i])})`, classeUV(diario.uv_index_max[i])]
         ];
-        linhas.forEach(([rotulo, valor]) => {
+        linhas.forEach(([rotulo, valor, classe]) => {
           const li = criar("li");
-          li.append(criar("span", null, rotulo), criar("strong", null, valor));
+          li.append(criar("span", null, rotulo), criar("strong", classe, valor));
           lista.append(li);
         });
 
@@ -287,8 +294,8 @@
       const conteudo = document.getElementById("conteudo");
 
       document.getElementById("mensagemHoraBusca").textContent = "";
-      document.title = `Previsão do Tempo Jaime - ${cidade.nome}`;
-      document.getElementById("nomeCidade").textContent = cidade.nome;
+      document.title = `Clima Jaime - ${cidade.nome}`;
+      document.getElementById("nomeCidadeSelecionada").textContent = cidade.nome;
       document.querySelectorAll("#cidades button").forEach(b => {
         const ativo = b.textContent === cidade.nome;
         b.classList.toggle("ativo", ativo);
