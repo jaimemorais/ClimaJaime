@@ -140,7 +140,8 @@
         daily: "weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,showers_sum,rain_sum,precipitation_sum,precipitation_hours,precipitation_probability_max",
         hourly: "weather_code,is_day,temperature_2m,rain,precipitation_probability,relative_humidity_2m,showers,cloud_cover",
         current: "weather_code,is_day,temperature_2m,relative_humidity_2m,precipitation,rain,showers,wind_speed_10m,wind_direction_10m",
-        timezone: cidade.timezone
+        timezone: cidade.timezone,
+        forecast_days: 15
       });
       return `https://api.open-meteo.com/v1/forecast?${params}`;
     }
